@@ -6,15 +6,15 @@ import "sync"
 // `iteratee` is call in parallel. Result keep the same order.
 // You also can control the conurrency limit by optional ParallelOption to limit the maximum number of
 // concurrent `iteratee` goroutines running at the same time, just like
-// `parallel.Map(list, iteratee, parallel.Option().Concurrency(10))`.
-func Map[T any, R any](collection []T, iteratee func(T, int) R, options ...*ParallelOption) []R {
+// `parallel.Map(list, iteratee, parallel.WithConcurrency(10))`.
+func Map[T any, R any](collection []T, iteratee func(T, int) R, optionFns ...optFn) []R {
 	result := make([]R, len(collection))
 
 	handler := func(item T, ix int) {
 		result[ix] = iteratee(item, ix)
 	}
 
-	ForEach(collection, handler, options...)
+	ForEach(collection, handler, optionFns...)
 
 	return result
 }
@@ -23,14 +23,14 @@ func Map[T any, R any](collection []T, iteratee func(T, int) R, options ...*Para
 // `iteratee` is call in parallel.
 // You also can control the conurrency limit by optional ParallelOption to limit the maximum number of
 // concurrent `iteratee` goroutines running at the same time, just like
-// `parallel.ForEach(list, iteratee, parallel.Option().Concurrency(10))`.
-func ForEach[T any](collection []T, iteratee func(T, int), options ...*ParallelOption) {
+// `parallel.ForEach(list, iteratee, parallel.WithConcurrency(10))`.
+func ForEach[T any](collection []T, iteratee func(T, int), optionFns ...optFn) {
 	var wg sync.WaitGroup
 	var concurrencyLimiter chan bool
 
-	option := mergeOptions(options)
-	if option.concurrencySetted {
-		concurrencyLimiter = make(chan bool, option.concurrency)
+	options := mergeOptions(optionFns)
+	if options.concurrency != 0 {
+		concurrencyLimiter = make(chan bool, options.concurrency)
 	}
 
 	wg.Add(len(collection))
@@ -56,13 +56,13 @@ func ForEach[T any](collection []T, iteratee func(T, int), options ...*ParallelO
 // `iteratee` is call in parallel.
 // You also can control the conurrency limit by optional ParallelOption to limit the maximum number of
 // concurrent `iteratee` goroutines running at the same time, just like
-// `parallel.Times(count, iteratee, parallel.Option().Concurrency(10))`.
-func Times[T any](count int, iteratee func(int) T, options ...*ParallelOption) []T {
+// `parallel.Times(count, iteratee, parallel.WithConcurrency(10))`.
+func Times[T any](count int, iteratee func(int) T, optionFns ...optFn) []T {
 	var concurrencyLimiter chan bool
 
-	option := mergeOptions(options)
-	if option.concurrencySetted {
-		concurrencyLimiter = make(chan bool, option.concurrency)
+	options := mergeOptions(optionFns)
+	if options.concurrency != 0 {
+		concurrencyLimiter = make(chan bool, options.concurrency)
 	}
 
 	result := make([]T, count)
@@ -93,8 +93,8 @@ func Times[T any](count int, iteratee func(int) T, options ...*ParallelOption) [
 // `iteratee` is call in parallel.
 // You also can control the conurrency limit by optional ParallelOption to limit the maximum number of
 // concurrent `iteratee` goroutines running at the same time, just like
-// `parallel.GroupBy(list, iteratee, parallel.Option().Concurrency(10))`.
-func GroupBy[T any, U comparable](collection []T, iteratee func(T) U, options ...*ParallelOption) map[U][]T {
+// `parallel.GroupBy(list, iteratee, parallel.WithConcurrency(10))`.
+func GroupBy[T any, U comparable](collection []T, iteratee func(T) U, optionFns ...optFn) map[U][]T {
 	result := map[U][]T{}
 	var mu sync.Mutex
 
@@ -111,7 +111,7 @@ func GroupBy[T any, U comparable](collection []T, iteratee func(T) U, options ..
 		mu.Unlock()
 	}
 
-	ForEach(collection, handler, options...)
+	ForEach(collection, handler, optionFns...)
 
 	return result
 }
@@ -122,8 +122,8 @@ func GroupBy[T any, U comparable](collection []T, iteratee func(T) U, options ..
 // `iteratee` is call in parallel.
 // You also can control the conurrency limit by optional ParallelOption to limit the maximum number of
 // concurrent `iteratee` goroutines running at the same time, just like
-// `parallel.PartitionBy(list, iteratee, parallel.Option().Concurrency(10))`.
-func PartitionBy[T any, K comparable](collection []T, iteratee func(x T) K, options ...*ParallelOption) [][]T {
+// `parallel.PartitionBy(list, iteratee, parallel.WithConcurrency(10))`.
+func PartitionBy[T any, K comparable](collection []T, iteratee func(x T) K, optionFns ...optFn) [][]T {
 	result := [][]T{}
 
 	seen := map[K]int{}
@@ -145,7 +145,7 @@ func PartitionBy[T any, K comparable](collection []T, iteratee func(x T) K, opti
 		result[resultIndex] = append(result[resultIndex], item)
 	}
 
-	ForEach(collection, handler, options...)
+	ForEach(collection, handler, optionFns...)
 
 	return result
 }

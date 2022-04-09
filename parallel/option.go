@@ -2,32 +2,26 @@ package parallel
 
 // ParallelOption provides some useful configure options for parallel, such as conurrency limit.
 type ParallelOption struct {
-	concurrency       int
-	concurrencySetted bool
+	concurrency int
 }
 
-// Option() create an empty ParallelOption
-func Option() *ParallelOption {
-	return &ParallelOption{}
-}
+type optFn func(*ParallelOption)
 
-// Concurrency() set the maximum number of concurrent `iteratee` goroutines running at the same time.
-func (o *ParallelOption) Concurrency(concurrency int) *ParallelOption {
-	o.concurrency = concurrency
-	o.concurrencySetted = true
-	return o
-}
-
-func mergeOptions(options []*ParallelOption) ParallelOption {
-	ret := ParallelOption{}
-	for _, option := range options {
-		if option == nil {
-			continue
-		}
-		if option.concurrencySetted {
-			ret.concurrency = option.concurrency
-			ret.concurrencySetted = true
-		}
+// WithConcurrency set the maximum number of concurrent `iteratee` goroutines running at the same time.
+func WithConcurrency(concurrency int) optFn {
+	return func(po *ParallelOption) {
+		po.concurrency = concurrency
 	}
-	return ret
+}
+
+func mergeOptions(optionFns []optFn) ParallelOption {
+	opts := ParallelOption{
+		concurrency: 0,
+	}
+
+	for _, fn := range optionFns {
+		fn(&opts)
+	}
+
+	return opts
 }
